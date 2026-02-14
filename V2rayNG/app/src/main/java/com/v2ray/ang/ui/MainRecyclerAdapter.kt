@@ -8,19 +8,21 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.v2ray.ang.R
 import com.v2ray.ang.databinding.ItemRecyclerMainBinding
+// الاستيرادات التي كانت ناقصة وتسبب الأخطاء
 import com.v2ray.ang.dto.ProfileItem
+import com.v2ray.ang.dto.ServersCache
+import com.v2ray.ang.dto.ServerAffix
 import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.helper.SimpleItemTouchHelperCallback
 import com.v2ray.ang.viewmodel.MainViewModel
 
-// تعريف الكلاس مع تنفيذ الواجهة الصحيحة
+// حل مشكلة الواجهة عن طريق استدعاء الكلاس الأب
 class MainRecyclerAdapter(
     private val activity: MainActivity, 
     private val viewModel: MainViewModel
 ) : RecyclerView.Adapter<MainRecyclerAdapter.BaseViewHolder>(), 
     SimpleItemTouchHelperCallback.ItemTouchHelperAdapter {
     
-    // تعريف المستمع للتعديل (يستقبل GUID و ProfileItem)
     private var editListener: ((String, ProfileItem) -> Unit)? = null
 
     fun setEditListener(listener: (String, ProfileItem) -> Unit) {
@@ -35,20 +37,24 @@ class MainRecyclerAdapter(
 
     override fun onBindViewHolder(holder: BaseViewHolder, position: Int) {
         if (holder is MainViewHolder) {
-            // 1. استخراج البيانات بشكل صحيح (الحل الجذري للأخطاء)
-            val serverCache = viewModel.serversCache[position]
+            // استخراج البيانات مع تحديد النوع لحل مشكلة 'config' unresolved
+            val serverCache: ServersCache = viewModel.serversCache[position]
             val guid = serverCache.guid
-            val config = serverCache.config // هذا هو ProfileItem
-            
-            // 2. تعيين الاسم (حل مشكلة remarks)
+            val config = serverCache.config // الآن سيتعرف عليها النظام
+
+            // 1. الاسم
             holder.itemBinding.tvName.text = config.remarks
 
-            // 3. تعيين البينغ (بشكل آمن)
-            // ملاحظة: تم تبسيط هذا الجزء لتجنب خطأ decodeServerAffix إذا كان غير موجود
-            val testResult = MmkvManager.decodeServerAffix(guid)
-            if (testResult != null) {
-                holder.itemBinding.tvTestResult.text = testResult.getTestDelayString()
-                if (testResult.testDelayMillis < 0) {
+            // 2. البينغ (Ping) - تم تبسيطه لتجنب الأخطاء
+            val affix = MmkvManager.decodeServerAffix(guid)
+            if (affix != null) {
+                holder.itemBinding.tvTestResult.text = try {
+                    affix.testDelayMillis.toString() + " ms"
+                } catch (e: Exception) {
+                    "" 
+                }
+                
+                if (affix.testDelayMillis < 0) {
                      holder.itemBinding.tvTestResult.setTextColor(ContextCompat.getColor(activity, R.color.red))
                 } else {
                      holder.itemBinding.tvTestResult.setTextColor(ContextCompat.getColor(activity, R.color.secondary_text))
@@ -57,7 +63,7 @@ class MainRecyclerAdapter(
                 holder.itemBinding.tvTestResult.text = ""
             }
 
-            // 4. تعيين لون الاختيار
+            // 3. لون الاختيار
             val selectedGuid = MmkvManager.getSelectServer()
             if (guid == selectedGuid) {
                 holder.itemBinding.vIndicator.setBackgroundColor(ContextCompat.getColor(activity, R.color.colorAccent))
@@ -67,17 +73,18 @@ class MainRecyclerAdapter(
                 holder.itemBinding.tvName.setTextColor(ContextCompat.getColor(activity, R.color.primary_text))
             }
 
-            // 5. عند الضغط على السيرفر (اختيار)
+            // 4. النقر للاختيار
             holder.itemView.setOnClickListener {
                 MmkvManager.setSelectServer(guid)
                 notifyDataSetChanged()
-                // تم حذف reloadServerList لأنها غير موجودة، الفيو موديل سيتكفل بالتحديث
-                // إذا لزم الأمر يمكن إضافة: viewModel.reloadServerList()
+                // تم استخدام طريقة آمنة لتحديث القائمة
+                if (activity is MainActivity) {
+                    activity.reloadServerList()
+                }
             }
 
-            // 6. عند الضغط على زر التعديل
+            // 5. زر التعديل
             holder.itemBinding.ivEdit.setOnClickListener {
-                // نمرر البيانات الصحيحة للمستمع
                 editListener?.invoke(guid, config)
             }
         }
