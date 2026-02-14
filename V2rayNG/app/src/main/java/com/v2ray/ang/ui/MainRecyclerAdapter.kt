@@ -8,23 +8,29 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.v2ray.ang.R
 import com.v2ray.ang.databinding.ItemRecyclerMainBinding
+import com.v2ray.ang.dto.GuidConfig
 import com.v2ray.ang.dto.EConfigType
-import com.v2ray.ang.extension.toast
 import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.helper.SimpleItemTouchHelperCallback
 import com.v2ray.ang.util.Utils
+import com.v2ray.ang.viewmodel.MainViewModel
 
-class MainRecyclerAdapter(private val activity: MainActivity) : RecyclerView.Adapter<MainRecyclerAdapter.BaseViewHolder>(), SimpleItemTouchHelperCallback.ItemTouchHelperAdapter {
-    private var shareListener: ((String) -> Unit)? = null
-    private var editListener: ((String) -> Unit)? = null
+class MainRecyclerAdapter(private val activity: MainActivity, private val viewModel: MainViewModel) : RecyclerView.Adapter<MainRecyclerAdapter.BaseViewHolder>(), SimpleItemTouchHelperCallback.ItemTouchHelperAdapter {
+    
+    private var shareListener: ((GuidConfig) -> Unit)? = null
+    private var editListener: ((GuidConfig) -> Unit)? = null
 
-    override fun getItemCount() = activity.mainViewModel.serversCache.size
+    // هذه الدالة كانت مفقودة وتسبب خطأ
+    fun setData(newSize: Int) {
+        notifyDataSetChanged()
+    }
+
+    override fun getItemCount() = viewModel.serversCache.size
 
     override fun onBindViewHolder(holder: BaseViewHolder, position: Int) {
         if (holder is MainViewHolder) {
-            val guid = activity.mainViewModel.serversCache[position].guid
-            val config = activity.mainViewModel.serversCache[position].config
-            // تعديل: استخدام الألوان الجديدة
+            val guid = viewModel.serversCache[position].guid
+            val config = viewModel.serversCache[position].config
             val affix = MmkvManager.decodeServerAffix(guid)
 
             // 1. تعيين الاسم
@@ -38,8 +44,8 @@ class MainRecyclerAdapter(private val activity: MainActivity) : RecyclerView.Ada
                  holder.itemBinding.tvTestResult.setTextColor(ContextCompat.getColor(activity, R.color.secondary_text))
             }
 
-            // 3. تعيين لون المؤشر الجانبي
-            val selectedGuid = activity.mainViewModel.mainStorage?.decodeString("KEY_SELECTED_SERVER")
+            // 3. تعيين لون المؤشر الجانبي (تم إصلاح الخطأ هنا باستخدام الدالة العامة)
+            val selectedGuid = MmkvManager.getSelectServer()
             if (guid == selectedGuid) {
                 holder.itemBinding.vIndicator.setBackgroundColor(ContextCompat.getColor(activity, R.color.colorAccent))
                 holder.itemBinding.tvName.setTextColor(ContextCompat.getColor(activity, R.color.colorPrimary))
@@ -50,15 +56,14 @@ class MainRecyclerAdapter(private val activity: MainActivity) : RecyclerView.Ada
 
             // 4. تشغيل حدث الضغط على السيرفر
             holder.itemView.setOnClickListener {
-                activity.mainViewModel.updateConfigViaSub(guid)
-                // تحديث الواجهة يدوياً
+                viewModel.selectServer(guid) // استخدام دالة الفيو موديل
                 notifyDataSetChanged()
                 activity.reloadServerList()
             }
 
             // 5. زر التعديل
             holder.itemBinding.ivEdit.setOnClickListener {
-                editListener?.invoke(guid)
+                editListener?.invoke(viewModel.serversCache[position])
             }
         }
     }
@@ -68,33 +73,25 @@ class MainRecyclerAdapter(private val activity: MainActivity) : RecyclerView.Ada
     }
 
     override fun onItemMove(fromPosition: Int, toPosition: Int): Boolean {
-        activity.mainViewModel.swapServer(fromPosition, toPosition)
+        viewModel.swapServer(fromPosition, toPosition)
         notifyItemMoved(fromPosition, toPosition)
         return true
     }
 
     override fun onItemDismiss(position: Int) {
-        activity.mainViewModel.removeServer(activity.mainViewModel.serversCache[position].guid)
+        viewModel.removeServer(viewModel.serversCache[position].guid)
         notifyItemRemoved(position)
     }
 
     open class BaseViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         fun onItemSelected() {
-            // itemView.setBackgroundColor(Color.LTGRAY)
+             // اختياري
         }
 
         fun onItemClear() {
-            // itemView.setBackgroundColor(0)
+             // اختياري
         }
     }
 
     class MainViewHolder(val itemBinding: ItemRecyclerMainBinding) : BaseViewHolder(itemBinding.root)
-
-    fun setShareListener(listener: (String) -> Unit) {
-        this.shareListener = listener
-    }
-
-    fun setEditListener(listener: (String) -> Unit) {
-        this.editListener = listener
-    }
 }
