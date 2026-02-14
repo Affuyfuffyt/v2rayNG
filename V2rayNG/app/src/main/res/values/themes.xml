@@ -15,6 +15,15 @@
         <item name="windowNoTitle">true</item>
     </style>
     
+    <style name="AppThemeDayNight.NoActionBar" parent="AppThemeBase" />
+
+    <style name="AppThemeDayNight.NoActionBar.Translucent" parent="AppThemeBase">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowTranslucentStatus">true</item>
+    </style>
+
     <style name="ValidText">
         <item name="android:textColor">@color/primary_text</item>
         <item name="android:textStyle">bold</item>
