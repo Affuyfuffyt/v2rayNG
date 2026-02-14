@@ -8,20 +8,21 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.v2ray.ang.R
 import com.v2ray.ang.databinding.ItemRecyclerMainBinding
-import com.v2ray.ang.dto.ProfileItem // هذا هو الكلاس الصحيح
+import com.v2ray.ang.dto.ProfileItem
 import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.helper.SimpleItemTouchHelperCallback
 import com.v2ray.ang.viewmodel.MainViewModel
 
+// تعريف الكلاس مع تنفيذ الواجهة الصحيحة
 class MainRecyclerAdapter(
     private val activity: MainActivity, 
     private val viewModel: MainViewModel
 ) : RecyclerView.Adapter<MainRecyclerAdapter.BaseViewHolder>(), 
     SimpleItemTouchHelperCallback.ItemTouchHelperAdapter {
     
+    // تعريف المستمع للتعديل (يستقبل GUID و ProfileItem)
     private var editListener: ((String, ProfileItem) -> Unit)? = null
 
-    // نمرر الـ GUID والـ ProfileItem للمستمع
     fun setEditListener(listener: (String, ProfileItem) -> Unit) {
         this.editListener = listener
     }
@@ -34,22 +35,29 @@ class MainRecyclerAdapter(
 
     override fun onBindViewHolder(holder: BaseViewHolder, position: Int) {
         if (holder is MainViewHolder) {
-            val guid = viewModel.serversCache[position].guid
-            val config = viewModel.serversCache[position] // هذا هو ProfileItem
-            val affix = MmkvManager.decodeServerAffix(guid)
-
-            // 1. الاسم
+            // 1. استخراج البيانات بشكل صحيح (الحل الجذري للأخطاء)
+            val serverCache = viewModel.serversCache[position]
+            val guid = serverCache.guid
+            val config = serverCache.config // هذا هو ProfileItem
+            
+            // 2. تعيين الاسم (حل مشكلة remarks)
             holder.itemBinding.tvName.text = config.remarks
 
-            // 2. البينغ
-            holder.itemBinding.tvTestResult.text = affix?.getTestDelayString() ?: ""
-            if (affix?.testDelayMillis ?: 0L < 0) {
-                 holder.itemBinding.tvTestResult.setTextColor(ContextCompat.getColor(activity, R.color.red))
+            // 3. تعيين البينغ (بشكل آمن)
+            // ملاحظة: تم تبسيط هذا الجزء لتجنب خطأ decodeServerAffix إذا كان غير موجود
+            val testResult = MmkvManager.decodeServerAffix(guid)
+            if (testResult != null) {
+                holder.itemBinding.tvTestResult.text = testResult.getTestDelayString()
+                if (testResult.testDelayMillis < 0) {
+                     holder.itemBinding.tvTestResult.setTextColor(ContextCompat.getColor(activity, R.color.red))
+                } else {
+                     holder.itemBinding.tvTestResult.setTextColor(ContextCompat.getColor(activity, R.color.secondary_text))
+                }
             } else {
-                 holder.itemBinding.tvTestResult.setTextColor(ContextCompat.getColor(activity, R.color.secondary_text))
+                holder.itemBinding.tvTestResult.text = ""
             }
 
-            // 3. المؤشر الملون
+            // 4. تعيين لون الاختيار
             val selectedGuid = MmkvManager.getSelectServer()
             if (guid == selectedGuid) {
                 holder.itemBinding.vIndicator.setBackgroundColor(ContextCompat.getColor(activity, R.color.colorAccent))
@@ -59,15 +67,17 @@ class MainRecyclerAdapter(
                 holder.itemBinding.tvName.setTextColor(ContextCompat.getColor(activity, R.color.primary_text))
             }
 
-            // 4. الاختيار
+            // 5. عند الضغط على السيرفر (اختيار)
             holder.itemView.setOnClickListener {
                 MmkvManager.setSelectServer(guid)
                 notifyDataSetChanged()
-                activity.reloadServerList()
+                // تم حذف reloadServerList لأنها غير موجودة، الفيو موديل سيتكفل بالتحديث
+                // إذا لزم الأمر يمكن إضافة: viewModel.reloadServerList()
             }
 
-            // 5. التعديل
+            // 6. عند الضغط على زر التعديل
             holder.itemBinding.ivEdit.setOnClickListener {
+                // نمرر البيانات الصحيحة للمستمع
                 editListener?.invoke(guid, config)
             }
         }
