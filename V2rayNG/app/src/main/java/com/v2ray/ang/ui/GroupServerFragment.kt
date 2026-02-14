@@ -8,13 +8,10 @@ import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
-// الاستيرادات الضرورية
 import com.v2ray.ang.databinding.FragmentGroupServerBinding
 import com.v2ray.ang.helper.SimpleItemTouchHelperCallback
 import com.v2ray.ang.viewmodel.MainViewModel
-import com.v2ray.ang.dto.GuidConfig // هذا كان ناقص ويسبب المشكلة
 import com.v2ray.ang.ui.ServerActivity
-import com.v2ray.ang.ui.MainActivity
 
 class GroupServerFragment : BaseFragment<FragmentGroupServerBinding>() {
     private val ownerActivity: MainActivity
@@ -41,10 +38,11 @@ class GroupServerFragment : BaseFragment<FragmentGroupServerBinding>() {
 
         adapter = MainRecyclerAdapter(ownerActivity, mainViewModel)
         
-        // الآن GuidConfig معروف هنا ولن يظهر خطأ
-        adapter.setEditListener { guidConfig ->
-             val intent = Intent().putExtra("guid", guidConfig.guid)
+        // التعديل هنا: نستقبل (guid, profileItem)
+        adapter.setEditListener { guid, profileItem ->
+             val intent = Intent().putExtra("guid", guid)
                 .putExtra("isRunning", mainViewModel.isRunning.value)
+             // يمكن استخدام profileItem لتحديد نوع الاكتيفيتي اذا اردت، لكن حالياً نوجهه للافتراضي
             ownerActivity.startActivity(intent.setClass(ownerActivity, ServerActivity::class.java))
         }
 
@@ -52,7 +50,6 @@ class GroupServerFragment : BaseFragment<FragmentGroupServerBinding>() {
         binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), 1)
         binding.recyclerView.adapter = adapter
 
-        // تمرير false هو الصحيح
         val callback = SimpleItemTouchHelperCallback(adapter, false)
         itemTouchHelper = ItemTouchHelper(callback)
         itemTouchHelper?.attachToRecyclerView(binding.recyclerView)
