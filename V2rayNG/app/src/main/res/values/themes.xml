@@ -7,6 +7,9 @@
         <item name="colorSecondary">@color/colorAccent</item>
         <item name="android:statusBarColor">@color/colorPrimaryDark</item>
         <item name="android:windowBackground">@color/app_background</item>
+        
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:colorAccent">@color/colorAccent</item>
     </style>
 
     <style name="Theme.V2rayNG" parent="AppThemeBase">
@@ -22,6 +25,11 @@
         <item name="android:colorBackgroundCacheHint">@null</item>
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowTranslucentStatus">true</item>
+    </style>
+
+    <style name="BrandedSwitch" parent="Widget.MaterialComponents.CompoundButton.Switch">
+        <item name="useMaterialThemeColors">true</item>
+        <item name="android:thumbTint">@color/colorPrimary</item>
     </style>
 
     <style name="ValidText">
