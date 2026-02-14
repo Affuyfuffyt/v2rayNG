@@ -6,26 +6,23 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
-// الاستيرادات الضرورية التي كانت ناقصة
 import com.v2ray.ang.R
 import com.v2ray.ang.databinding.ItemRecyclerMainBinding
-import com.v2ray.ang.dto.GuidConfig
-import com.v2ray.ang.dto.EConfigType
+import com.v2ray.ang.dto.ProfileItem // هذا هو الكلاس الصحيح
 import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.helper.SimpleItemTouchHelperCallback
 import com.v2ray.ang.viewmodel.MainViewModel
-import com.v2ray.ang.util.Utils
-import com.v2ray.ang.ui.MainActivity
 
 class MainRecyclerAdapter(
     private val activity: MainActivity, 
     private val viewModel: MainViewModel
 ) : RecyclerView.Adapter<MainRecyclerAdapter.BaseViewHolder>(), 
-    SimpleItemTouchHelperCallback.ItemTouchHelperAdapter { // الآن الواجهة معرفة بفضل الـ import
+    SimpleItemTouchHelperCallback.ItemTouchHelperAdapter {
     
-    private var editListener: ((GuidConfig) -> Unit)? = null
+    private var editListener: ((String, ProfileItem) -> Unit)? = null
 
-    fun setEditListener(listener: (GuidConfig) -> Unit) {
+    // نمرر الـ GUID والـ ProfileItem للمستمع
+    fun setEditListener(listener: (String, ProfileItem) -> Unit) {
         this.editListener = listener
     }
 
@@ -37,16 +34,14 @@ class MainRecyclerAdapter(
 
     override fun onBindViewHolder(holder: BaseViewHolder, position: Int) {
         if (holder is MainViewHolder) {
-            // الوصول للبيانات بشكل آمن
-            val guidConfig = viewModel.serversCache[position]
-            val guid = guidConfig.guid
-            val config = guidConfig.config
+            val guid = viewModel.serversCache[position].guid
+            val config = viewModel.serversCache[position] // هذا هو ProfileItem
             val affix = MmkvManager.decodeServerAffix(guid)
 
             // 1. الاسم
             holder.itemBinding.tvName.text = config.remarks
 
-            // 2. البينغ (Ping)
+            // 2. البينغ
             holder.itemBinding.tvTestResult.text = affix?.getTestDelayString() ?: ""
             if (affix?.testDelayMillis ?: 0L < 0) {
                  holder.itemBinding.tvTestResult.setTextColor(ContextCompat.getColor(activity, R.color.red))
@@ -68,12 +63,12 @@ class MainRecyclerAdapter(
             holder.itemView.setOnClickListener {
                 MmkvManager.setSelectServer(guid)
                 notifyDataSetChanged()
-                activity.reloadServerList() // الآن تعمل لأننا استوردنا MainActivity
+                activity.reloadServerList()
             }
 
             // 5. التعديل
             holder.itemBinding.ivEdit.setOnClickListener {
-                editListener?.invoke(guidConfig)
+                editListener?.invoke(guid, config)
             }
         }
     }
