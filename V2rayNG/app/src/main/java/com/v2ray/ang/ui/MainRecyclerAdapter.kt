@@ -12,15 +12,23 @@ import com.v2ray.ang.dto.GuidConfig
 import com.v2ray.ang.dto.EConfigType
 import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.helper.SimpleItemTouchHelperCallback
-import com.v2ray.ang.util.Utils
 import com.v2ray.ang.viewmodel.MainViewModel
 
-class MainRecyclerAdapter(private val activity: MainActivity, private val viewModel: MainViewModel) : RecyclerView.Adapter<MainRecyclerAdapter.BaseViewHolder>(), SimpleItemTouchHelperCallback.ItemTouchHelperAdapter {
+// الآن هذا الكلاس ينفذ الواجهة المطلوبة ItemTouchHelperAdapter بشكل صحيح
+class MainRecyclerAdapter(
+    private val activity: MainActivity, 
+    private val viewModel: MainViewModel
+) : RecyclerView.Adapter<MainRecyclerAdapter.BaseViewHolder>(), 
+    SimpleItemTouchHelperCallback.ItemTouchHelperAdapter {
     
-    private var shareListener: ((GuidConfig) -> Unit)? = null
+    // تعريف المستمع لزر التعديل
     private var editListener: ((GuidConfig) -> Unit)? = null
 
-    // هذه الدالة كانت مفقودة وتسبب خطأ
+    fun setEditListener(listener: (GuidConfig) -> Unit) {
+        this.editListener = listener
+    }
+
+    // دالة لتحديث البيانات
     fun setData(newSize: Int) {
         notifyDataSetChanged()
     }
@@ -29,14 +37,15 @@ class MainRecyclerAdapter(private val activity: MainActivity, private val viewMo
 
     override fun onBindViewHolder(holder: BaseViewHolder, position: Int) {
         if (holder is MainViewHolder) {
-            val guid = viewModel.serversCache[position].guid
-            val config = viewModel.serversCache[position].config
+            val guidConfig = viewModel.serversCache[position]
+            val guid = guidConfig.guid
+            val config = guidConfig.config
             val affix = MmkvManager.decodeServerAffix(guid)
 
-            // 1. تعيين الاسم
+            // 1. الاسم
             holder.itemBinding.tvName.text = config.remarks
 
-            // 2. تعيين نتيجة الفحص
+            // 2. نتيجة الفحص (Ping)
             holder.itemBinding.tvTestResult.text = affix?.getTestDelayString() ?: ""
             if (affix?.testDelayMillis ?: 0L < 0) {
                  holder.itemBinding.tvTestResult.setTextColor(ContextCompat.getColor(activity, R.color.red))
@@ -44,7 +53,7 @@ class MainRecyclerAdapter(private val activity: MainActivity, private val viewMo
                  holder.itemBinding.tvTestResult.setTextColor(ContextCompat.getColor(activity, R.color.secondary_text))
             }
 
-            // 3. تعيين لون المؤشر الجانبي (تم إصلاح الخطأ هنا باستخدام الدالة العامة)
+            // 3. المؤشر الجانبي (الأزرق)
             val selectedGuid = MmkvManager.getSelectServer()
             if (guid == selectedGuid) {
                 holder.itemBinding.vIndicator.setBackgroundColor(ContextCompat.getColor(activity, R.color.colorAccent))
@@ -54,16 +63,16 @@ class MainRecyclerAdapter(private val activity: MainActivity, private val viewMo
                 holder.itemBinding.tvName.setTextColor(ContextCompat.getColor(activity, R.color.primary_text))
             }
 
-            // 4. تشغيل حدث الضغط على السيرفر
+            // 4. عند الضغط على السيرفر (اختيار)
             holder.itemView.setOnClickListener {
-                viewModel.selectServer(guid) // استخدام دالة الفيو موديل
+                MmkvManager.setSelectServer(guid)
                 notifyDataSetChanged()
                 activity.reloadServerList()
             }
 
-            // 5. زر التعديل
+            // 5. زر التعديل (القلم)
             holder.itemBinding.ivEdit.setOnClickListener {
-                editListener?.invoke(viewModel.serversCache[position])
+                editListener?.invoke(guidConfig)
             }
         }
     }
@@ -72,6 +81,7 @@ class MainRecyclerAdapter(private val activity: MainActivity, private val viewMo
         return MainViewHolder(ItemRecyclerMainBinding.inflate(LayoutInflater.from(parent.context), parent, false))
     }
 
+    // دوال السحب والإفلات المطلوبة
     override fun onItemMove(fromPosition: Int, toPosition: Int): Boolean {
         viewModel.swapServer(fromPosition, toPosition)
         notifyItemMoved(fromPosition, toPosition)
@@ -85,13 +95,13 @@ class MainRecyclerAdapter(private val activity: MainActivity, private val viewMo
 
     open class BaseViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         fun onItemSelected() {
-             // اختياري
+             // اختياري: تغيير لون الخلفية عند السحب
         }
 
         fun onItemClear() {
-             // اختياري
+             // اختياري: إعادة اللون الطبيعي
         }
     }
 
     class MainViewHolder(val itemBinding: ItemRecyclerMainBinding) : BaseViewHolder(itemBinding.root)
-}
+    }
