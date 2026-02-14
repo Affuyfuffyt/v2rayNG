@@ -11,6 +11,8 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import com.v2ray.ang.databinding.FragmentGroupServerBinding
 import com.v2ray.ang.helper.SimpleItemTouchHelperCallback
 import com.v2ray.ang.viewmodel.MainViewModel
+// تأكدنا من استدعاء كل الـ imports الضرورية
+import com.v2ray.ang.dto.GuidConfig
 import com.v2ray.ang.ui.ServerActivity
 
 class GroupServerFragment : BaseFragment<FragmentGroupServerBinding>() {
@@ -21,18 +23,28 @@ class GroupServerFragment : BaseFragment<FragmentGroupServerBinding>() {
     private lateinit var adapter: MainRecyclerAdapter
     private var itemTouchHelper: ItemTouchHelper? = null
 
+    // هذا الجزء (Companion Object) ضروري جداً لحل مشكلة GroupPagerAdapter
+    companion object {
+        private const val ARG_SUB_ID = "subscriptionId"
+        fun newInstance(subId: String): GroupServerFragment {
+            return GroupServerFragment().apply {
+                arguments = Bundle().apply { putString(ARG_SUB_ID, subId) }
+            }
+        }
+    }
+
     override fun inflateBinding(inflater: LayoutInflater, container: ViewGroup?) =
         FragmentGroupServerBinding.inflate(inflater, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 1. استدعاء الأدابتر (تأكد أنك حدثت ملف MainRecyclerAdapter مسبقاً)
+        // إعداد الأدابتر
         adapter = MainRecyclerAdapter(ownerActivity, mainViewModel)
         
-        // 2. إعداد زر التعديل (القلم)
-        adapter.setEditListener { config ->
-             val intent = Intent().putExtra("guid", config.guid)
+        // إعداد زر التعديل
+        adapter.setEditListener { guidConfig ->
+             val intent = Intent().putExtra("guid", guidConfig.guid)
                 .putExtra("isRunning", mainViewModel.isRunning.value)
             ownerActivity.startActivity(intent.setClass(ownerActivity, ServerActivity::class.java))
         }
@@ -41,12 +53,12 @@ class GroupServerFragment : BaseFragment<FragmentGroupServerBinding>() {
         binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), 1)
         binding.recyclerView.adapter = adapter
 
-        // 3. تصليح الخطأ هنا: إضافة false للمعامل الثاني
+        // تفعيل السحب
         val callback = SimpleItemTouchHelperCallback(adapter, false)
         itemTouchHelper = ItemTouchHelper(callback)
         itemTouchHelper?.attachToRecyclerView(binding.recyclerView)
 
-        // 4. تحديث البيانات
+        // تحديث البيانات
         adapter.setData(0)
     }
 
